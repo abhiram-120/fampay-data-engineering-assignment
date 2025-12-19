@@ -1,50 +1,37 @@
 import pandas as pd
-from src.utils import load_data, save_ticker_data
-from src.processing import resample_to_monthly, calculate_technical_indicators
+from src.utils import load_data, save_to_csv
+from src.processing import resample_data, add_indicators
 
-# Define Configuration Paths
-INPUT_PATH = 'data/input/stock_prices.csv'
+# Config
+INPUT_FILE = 'data/input/stock_prices.csv'
 OUTPUT_DIR = 'data/output'
 
 def main():
-    print("🚀 Starting Data Pipeline...")
+    print("Reading master dataset...")
+    df = load_data(INPUT_FILE)
     
-    # Step 1: Load the raw data
-    try:
-        raw_df = load_data(INPUT_PATH)
-    except Exception as e:
-        print(f"❌ Critical Error: {e}")
-        return
+    # Get unique tickers
+    tickers = df['ticker'].unique()
+    print(f"Found {len(tickers)} symbols.")
 
-    # Step 2: Identify unique stock symbols (Tickers)
-    tickers = raw_df['ticker'].unique()
-    print(f"📊 Found {len(tickers)} tickers in the dataset: {tickers}")
-    
-    # Step 3: Loop through each ticker to process them independently
     for ticker in tickers:
-        # Filter data for the specific ticker
-        ticker_df = raw_df[raw_df['ticker'] == ticker].copy()
+        # Filter for current stock
+        # Copy is needed to avoid Setting WithCopy warnings later
+        stock_df = df[df['ticker'] == ticker].copy()
         
-        # Sort by date is crucial for Rolling Windows/Resampling to work correctly
-        ticker_df = ticker_df.sort_values('date')
+        # Date must be index for resampling
+        stock_df = stock_df.set_index('date').sort_index()
         
-        # Set Date as Index (Required for .resample() to work)
-        ticker_df.set_index('date', inplace=True)
+        # 1. Resample to Monthly
+        monthly_df = resample_data(stock_df)
         
-        # Step 4: Resample Daily -> Monthly
-        monthly_df = resample_to_monthly(ticker_df)
+        # 2. Add Indicators (SMA/EMA)
+        final_df = add_indicators(monthly_df)
         
-        # Step 5: Calculate Indicators (SMA/EMA)
-        final_df = calculate_technical_indicators(monthly_df)
-        
-        # ROUNDING: Clean up the output to 2 decimal places for readability
-        # (This makes the CSV look professional, though high precision is preserved internally)
-        final_df = final_df.round(2)
+        # 3. Save
+        save_to_csv(final_df, ticker, OUTPUT_DIR)
 
-        # Step 6: Save the result
-        save_ticker_data(final_df, ticker, OUTPUT_DIR)
-        
-    print(f"\n✅ Pipeline Completed Successfully. Results are in '{OUTPUT_DIR}'")
+    print("Job complete.")
 
 if __name__ == "__main__":
     main()
