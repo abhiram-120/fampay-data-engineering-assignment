@@ -1,4 +1,17 @@
 # FamPay – Data Engineering Intern Take-Home Assignment
+---
+
+
+Solution for the Data Engineering assignment.
+Calculates monthly OHLC and SMA/EMA (10, 20) for the provided tickers.
+
+## Assumptions
+- The "Open" price is the first available day of the month, and "Close" is the last.
+- For the first EMA calculation, the logic requires a previous value. I calculated the initial SMA (first 10/20 months) and used that as the starting point for the EMA series, then applied the formula for the rest.
+- Input data is assumed to be clean, but I added a sort by date just in case.
+
+## Note on Vectorization
+I used `groupby` and `resample` to avoid loops. The EMA calculation uses Pandas `ewm` but I had to handle the initial seed value manually to match the requirements.
 
 ## Objective
 Transform noisy daily stock price data into clean monthly summaries that are easier to analyze for long-term trends, and compute SMA/EMA indicators on monthly closing prices.
@@ -34,13 +47,6 @@ By aggregating to monthly OHLC values:
 
 ---
 
-## Assumptions
-- Dataset contains valid trading days only
-- No missing months per ticker in the given time range
-- EMA initialization follows Pandas default behavior
-- Designed for batch processing, not real-time streaming
-
----
 
 ## Trade-offs & Limitations
 - This solution is not optimized for large-scale or distributed datasets
@@ -55,8 +61,6 @@ By aggregating to monthly OHLC values:
 -partition output by year/month/ticker instead of flat CSVs
 -Schedule using Airflow / Dagster
 
-
-## How to Run
-```bash
+]
 pip install -r requirements.txt
 python main.py
